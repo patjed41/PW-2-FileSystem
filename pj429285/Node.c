@@ -2,7 +2,7 @@
 #include <pthread.h>
 
 #include "Node.h"
-#include "HashMap.h"
+#include "path_utils.h"
 #include "err.h"
 #include "safe_malloc.h"
 
@@ -69,6 +69,10 @@ void node_recursive_free(Node* node) {
     node_recursive_free((Node*) child);
 
   node_free(node);
+}
+
+HashMap* node_get_children(Node* node) {
+  return node->children;
 }
 
 void start_reading(Node* node) {

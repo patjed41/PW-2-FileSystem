@@ -19,20 +19,27 @@ void print_map(HashMap* map) {
 }
 
 
-int main(void)
-{
-    HashMap* map = hmap_new();
-    hmap_insert(map, "a", hmap_new());
-    print_map(map);
+int main(void) {
+  HashMap* map = hmap_new();
+  hmap_insert(map, "a", hmap_new());
+  print_map(map);
 
-    HashMap* child = (HashMap*)hmap_get(map, "a");
-    hmap_free(child);
-    hmap_remove(map, "a");
-    print_map(map);
+  HashMap* child = (HashMap*)hmap_get(map, "a");
+  hmap_free(child);
+  hmap_remove(map, "a");
+  print_map(map);
 
-    hmap_free(map);
+  hmap_free(map);
 
-    //return 0;
-    Tree* t = tree_new();
-    tree_free(t);
+  //return 0;
+  Tree* t = tree_new();
+
+  tree_create(t, "/a/");
+  tree_create(t, "/b/");
+  printf("%s\n", tree_list(t, "/"));
+  tree_create(t, "/a/aa/");
+  tree_create(t, "/a/bb/");
+  printf("%s\n", tree_list(t, "/a/"));
+
+  tree_free(t);
 }
