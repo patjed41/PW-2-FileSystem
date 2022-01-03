@@ -1,4 +1,5 @@
 #include "HashMap.h"
+#include "Tree.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,5 +32,7 @@ int main(void)
 
     hmap_free(map);
 
-    return 0;
+    //return 0;
+    Tree* t = tree_new();
+    tree_free(t);
 }
