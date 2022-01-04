@@ -40,6 +40,20 @@ int main(void) {
   tree_create(t, "/a/aa/");
   tree_create(t, "/a/bb/");
   printf("%s\n", tree_list(t, "/a/"));
+  tree_create(t, "/a/aa/aaa/");
+  tree_create(t, "/a/aa/bbb/");
+  printf("%s\n", tree_list(t, "/a/aa/"));
+  tree_remove(t, "/a/aa/aaa/");
+  printf("%s\n", tree_list(t, "/a/aa/"));
+  tree_move(t, "/a/aa/", "/a/cc/");
+  tree_print(t);
+
+  /*tree_create(t, "/a/");
+  tree_create(t, "/a/b/");
+  tree_create(t, "/a/b/c/");
+  tree_create(t, "/a/b/c/d/");
+  tree_move(t, "/a/b/c/", "/a/x/");
+  printf("%s\n", tree_list(t, "/a/"));*/
 
   tree_free(t);
 }
