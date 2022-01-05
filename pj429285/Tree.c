@@ -68,6 +68,7 @@ void tree_free(Tree* tree) {
 }
 
 static Node* reach_node(Tree* tree, const char* path, bool as_reader) {
+  //printf("path: %s\n", path);
   char next_node_name[MAX_FOLDER_NAME_LENGTH + 1];
   const char* subpath = path;
   Node* current_node = tree->root;
@@ -75,9 +76,13 @@ static Node* reach_node(Tree* tree, const char* path, bool as_reader) {
 
   if (strcmp(path, "/") == 0 && !as_reader) {
     start_writing(current_node);
+    //printf("Create w korzeniu:\n");
+    //print_state(current_node);
   }
   else {
     start_reading(current_node);
+    //printf("List w korzeniu:\n");
+    //print_state(current_node);
   }
 
   while ((subpath = split_path(subpath, next_node_name)) != NULL) {
@@ -92,6 +97,10 @@ static Node* reach_node(Tree* tree, const char* path, bool as_reader) {
     else {
       start_writing(next_node);
     }
+
+    //printf("List zajął /a/\n");
+    //print_state(current_node);
+    //print_state(next_node);
 
     finish_reading(current_node);
 
@@ -120,7 +129,7 @@ static Node* reach_node_from(Node* start, const char* path, bool as_reader) {
       start_writing(next_node);
     }
 
-    finish_reading(current_node);
+    if (current_node != start) finish_reading(current_node);
 
     current_node = next_node;
   }
@@ -129,8 +138,9 @@ static Node* reach_node_from(Node* start, const char* path, bool as_reader) {
 }
 
 char* tree_list(Tree* tree, const char* path) {
-  //printf("start: tree_list(tree, %s);\n", path);
   if (!is_path_valid(path)) return NULL;
+
+  //printf("start: tree_list(tree, %s);\n", path);
 
   Node* node = reach_node(tree, path, true);
   if (node == NULL) return NULL;
@@ -153,10 +163,15 @@ int tree_create(Tree* tree, const char* path) {
 
   char node_name[MAX_FOLDER_NAME_LENGTH + 1];
   char* path_to_parent = make_path_to_parent(path, node_name);
+
+  //printf("path: %s, path_to_parent: %s\n", path, path_to_parent);
   Node* parent = reach_node(tree, path_to_parent, false);
   free(path_to_parent);
 
-  if (parent == NULL) return ENOENT;
+  if (parent == NULL) {
+    //printf("end: tree_create(tree, %s);\n", path);
+    return ENOENT;
+  }
 
   int result = 0;
 
@@ -168,8 +183,12 @@ int tree_create(Tree* tree, const char* path) {
     hmap_insert(node_get_children(parent), node_name, node);
   }
 
-  finish_writing(parent);
+  //printf("path: %s\n", path);
+  //print_state(parent);
+  //printf("r:\n");
+  //print_state(tree->root);
 
+  finish_writing(parent);
   //printf("end: tree_create(tree, %s);\n", path);
 
   return result;
@@ -227,50 +246,6 @@ static void finish_operations_in_subtree(Node* node) {
 }
 
 /*int tree_move(Tree* tree, const char* source, const char* target) {
-  printf("tree_move(tree, %s, %s);\n", source, target);
-  if (!is_path_valid(source) || !is_path_valid(target)) return EINVAL;
-  if (strcmp(source, "/") == 0) return EBUSY;
-  if (strcmp(target, "/") == 0) return EEXIST;
-  if (strncmp(source, target, strlen(source)) == 0 && strcmp(source, target) != 0) return EMOVETOSUBTREE;
-
-  char target_name[MAX_FOLDER_NAME_LENGTH + 1];
-  char* path_to_target_parent = make_path_to_parent(target, target_name);
-  Node* target_parent = reach_node(tree, path_to_target_parent, false);
-  free(path_to_target_parent);
-  if (target_parent == NULL) return ENOENT;
-  if (hmap_get(node_get_children(target_parent), target_name) != NULL) {
-    finish_writing(target_parent);
-    return ENOENT;
-  }
-
-  char source_name[MAX_FOLDER_NAME_LENGTH + 1];
-  char* path_to_source_parent = make_path_to_parent(source, source_name);
-  Node* source_parent = reach_node(tree, path_to_source_parent, false);
-  free(path_to_source_parent);
-  if (source_parent == NULL) {
-    finish_writing(target_parent);
-    return ENOENT;
-  }
-
-  Node* source_node = (Node*) hmap_get(node_get_children(source_parent), source_name);
-  if (source_node == NULL) {
-    finish_writing(target_parent);
-    finish_writing(source_parent);
-    return ENOENT;
-  }
-
-  finish_operations_in_subtree(source_node);
-  hmap_insert(node_get_children(target_parent), target_name, source_node);
-  hmap_remove(node_get_children(source_parent), source_name);
-
-  finish_writing(target_parent);
-  finish_writing(source_parent);
-
-  return 0;
-}*/
-
-/*int tree_move(Tree* tree, const char* source, const char* target) {
-  //printf("start: tree_move(tree, %s, %s);\n", source, target);
   //tree_print(tree);
 
   if (!is_path_valid(source) || !is_path_valid(target)) return EINVAL;
@@ -282,17 +257,21 @@ static void finish_operations_in_subtree(Node* node) {
 
   if ((err = pthread_mutex_lock(&tree->move_lock)) != 0) syserr(err, "lock failed");
 
+  //printf("start: tree_move(tree, %s, %s);\n", source, target);
+
   char target_name[MAX_FOLDER_NAME_LENGTH + 1];
   char* path_to_target_parent = make_path_to_parent(target, target_name);
   Node* target_parent = reach_node(tree, path_to_target_parent, false);
   if (target_parent == NULL) {
     free(path_to_target_parent);
+    //printf("end: tree_move(tree, %s, %s);\n", source, target);
     if ((err = pthread_mutex_unlock(&tree->move_lock)) != 0) syserr(err, "unlock failed");
     return ENOENT;
   }
   else if (hmap_get(node_get_children(target_parent), target_name) != NULL) {
     free(path_to_target_parent);
     finish_writing(target_parent);
+    //printf("end: tree_move(tree, %s, %s);\n", source, target);
     if ((err = pthread_mutex_unlock(&tree->move_lock)) != 0) syserr(err, "unlock failed");
     return EEXIST;
   }
@@ -316,6 +295,7 @@ static void finish_operations_in_subtree(Node* node) {
 
   if (source_parent == NULL) {
     finish_writing(target_parent);
+    //printf("end: tree_move(tree, %s, %s);\n", source, target);
     return ENOENT;
   }
 
@@ -323,6 +303,7 @@ static void finish_operations_in_subtree(Node* node) {
   if (source_node == NULL) {
     finish_writing(target_parent);
     if (target_parent != source_parent) finish_writing(source_parent);
+    //printf("end: tree_move(tree, %s, %s);\n", source, target);
     return ENOENT;
   }
 
@@ -338,7 +319,76 @@ static void finish_operations_in_subtree(Node* node) {
   return 0;
 }*/
 
-static void finish_all_operations(Tree* tree, Node* node) {
+int tree_move(Tree* tree, const char* source, const char* target) {
+  if (!is_path_valid(source) || !is_path_valid(target)) return EINVAL;
+  if (strcmp(source, "/") == 0) return EBUSY;
+  if (strcmp(target, "/") == 0) return EEXIST;
+  if (strncmp(source, target, strlen(source)) == 0 && strcmp(source, target) != 0) return EMOVETOSUBTREE;
+
+  //printf("start: tree_move(tree, %s, %s);\n", source, target);
+
+  char source_name[MAX_FOLDER_NAME_LENGTH + 1];
+  char* path_to_source_parent = make_path_to_parent(source, source_name);
+  char target_name[MAX_FOLDER_NAME_LENGTH + 1];
+  char* path_to_target_parent = make_path_to_parent(target, target_name);
+  char* path_to_lca = make_path_to_lca(path_to_source_parent, path_to_target_parent);
+
+  Node* lca = reach_node(tree, path_to_lca, false);
+  if (lca == NULL) {
+    free(path_to_source_parent);
+    free(path_to_target_parent);
+    free(path_to_lca);
+    return ENOENT;
+  }
+
+  Node* source_parent = reach_node_from(lca, path_to_source_parent + strlen(path_to_lca) - 1, false);
+  free(path_to_source_parent);
+  if (source_parent == NULL) {
+    finish_writing(lca);
+    free(path_to_target_parent);
+    free(path_to_lca);
+    return ENOENT;
+  }
+
+  Node* target_parent = reach_node_from(lca, path_to_target_parent + strlen(path_to_lca) - 1, false);
+  free(path_to_target_parent);
+  free(path_to_lca);
+  if (target_parent == NULL) {
+    finish_writing(lca);
+    if (lca != source_parent) finish_writing(source_parent);
+    return ENOENT;
+  }
+
+  Node* source_node = (Node*) hmap_get(node_get_children(source_parent), source_name);
+
+  if (source_node == NULL) {
+    finish_writing(lca);
+    if (lca != source_parent) finish_writing(source_parent);
+    if (lca != target_parent) finish_writing(target_parent);
+    return ENOENT;
+  }
+
+  if (hmap_get(node_get_children(target_parent), target_name) != NULL) {
+    finish_writing(lca);
+    if (lca != source_parent) finish_writing(source_parent);
+    if (lca != target_parent) finish_writing(target_parent);
+    return EEXIST;
+  }
+
+  finish_operations_in_subtree(source_node);
+  hmap_insert(node_get_children(target_parent), target_name, source_node);
+  hmap_remove(node_get_children(source_parent), source_name);
+
+  finish_writing(lca);
+  if (lca != source_parent) finish_writing(source_parent);
+  if (lca != target_parent) finish_writing(target_parent);
+
+  //printf("end: tree_move(tree, %s, %s);\n", source, target);
+
+  return 0;
+}
+
+/*static void finish_all_operations(Tree* tree, Node* node) {
   if (node != tree->root)
     start_cleaning(node);
 
@@ -414,4 +464,4 @@ int tree_move(Tree* tree, const char* source, const char* target) {
   //printf("end: tree_move(tree, %s, %s);\n", source, target);
 
   return 0;
-}
+}*/

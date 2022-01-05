@@ -39,6 +39,8 @@ const char* split_path(const char* path, char* component);
 // Otherwise the result is a valid path.
 char* make_path_to_parent(const char* path, char* component);
 
+char* make_path_to_lca(const char* path1, const char* path2);
+
 // Return an array containing all keys, lexicographically sorted.
 // The result is null-terminated.
 // Keys are not copied, they are only valid as long as the map.

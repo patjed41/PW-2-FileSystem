@@ -25,3 +25,5 @@ void start_writing(Node* node);
 void finish_writing(Node* node);
 
 void start_cleaning(Node* node);
+
+void print_state(Node* node);

@@ -63,6 +63,28 @@ char* make_path_to_parent(const char* path, char* component) {
   return result;
 }
 
+char* make_path_to_lca(const char* path1, const char* path2) {
+  size_t max_len = strlen(path1) > strlen(path2) ? strlen(path2) : strlen(path1);
+  size_t index = 1;
+  size_t end = 0;
+  while (index <= max_len) {
+    if (path1[index] != path2[index]) {
+      break;
+    }
+    if (path1[index] == '/') {
+      end = index;
+    }
+    index++;
+  }
+
+  char* result = malloc(end + 2);
+  if (result == NULL)
+    exit(1);
+  strncpy(result, path1, end + 1);
+  result[end + 1] = '\0';
+  return result;
+}
+
 // A wrapper for using strcmp in qsort.
 // The arguments here are actually pointers to (const char*).
 static int compare_string_pointers(const void* p1, const void* p2) {

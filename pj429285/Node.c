@@ -6,6 +6,9 @@
 #include "err.h"
 #include "safe_malloc.h"
 
+// do usuniecia
+#include <stdio.h>
+
 struct Node {
   HashMap* children;
   pthread_mutex_t lock;
@@ -146,8 +149,14 @@ void finish_reading(Node* node) {
         syserr(err, "cond signal failed");
       }
     }
-    // Jeśli żaden pisarz nie czeka, to nie czekają też czytelnicy, więc
-    // trzeba wpuścić sprzątacza, jeśli jakiś czeka.
+    // Jeśli żaden pisarz nie czeka, to wpuszczamy czytelników, jeśli czekają.
+    else if (node->rwait > 0) {
+      node->change = 1;
+      if ((err = pthread_cond_signal(&node->readers)) != 0) {
+        syserr(err, "cond signal failed");
+      }
+    }
+    // Jeśli nikt nie czeka, to wpuszczamy sprzątacza, jeśli czeka.
     else if (node->cwait > 0) {
       node->change = 2;
       if ((err = pthread_cond_signal(&node->cleaner)) != 0) {
@@ -230,6 +239,10 @@ void start_cleaning(Node* node) {
 
   if ((err = pthread_mutex_unlock(&node->lock)) != 0)
     syserr (err, "unlock failed");
+}
+
+void print_state(Node* node) {
+  printf("rw: %d, rc: %d, ww: %d, wc: %d\n", node->rwait, node->rcount, node->wwait, node->wcount);
 }
 
 

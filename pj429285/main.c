@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "path_utils.h"
+
 void print_map(HashMap* map) {
     const char* key = NULL;
     void* value = NULL;
@@ -34,7 +36,9 @@ int main(void) {
   //return 0;
   Tree* t = tree_new();
 
-  tree_create(t, "/a/");
+  printf("%s\n", make_path_to_lca("/a/b/r/", "/a/b/c/d/e/"));
+
+  /*tree_create(t, "/a/");
   tree_create(t, "/b/");
   printf("%s\n", tree_list(t, "/"));
   tree_create(t, "/a/aa/");
@@ -46,7 +50,9 @@ int main(void) {
   tree_remove(t, "/a/aa/aaa/");
   printf("%s\n", tree_list(t, "/a/aa/"));
   tree_move(t, "/a/aa/", "/a/cc/");
-  tree_print(t);
+  tree_print(t);*/
+
+
 
   /*tree_create(t, "/a/");
   tree_create(t, "/a/b/");
