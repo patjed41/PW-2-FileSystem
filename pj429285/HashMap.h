@@ -52,6 +52,6 @@ HashMapIterator hmap_iterator(HashMap* map);
 bool hmap_next(HashMap* map, HashMapIterator* it, const char** key, void** value);
 
 struct HashMapIterator {
-    int bucket;
-    void* pair;
+  int bucket;
+  void* pair;
 };
