@@ -39,6 +39,9 @@ const char* split_path(const char* path, char* component);
 // Otherwise the result is a valid path.
 char* make_path_to_parent(const char* path, char* component);
 
+// Return a copy of the path to lca(path1, path2), it is the copy of the longest
+// prefix being a valid path common to path1 and path2.
+// Args path1 and path2 should be a valid path.
 char* make_path_to_lca(const char* path1, const char* path2);
 
 // Return an array containing all keys, lexicographically sorted.

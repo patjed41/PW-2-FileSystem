@@ -1,7 +1,7 @@
 #include "path_utils.h"
+#include "safe_alloc.h"
 
 #include <assert.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -29,7 +29,7 @@ const char* split_path(const char* path, char* component) {
   if (!subpath) // Path is "/".
     return NULL;
   if (component) {
-    int len = subpath - (path + 1);
+    size_t len = subpath - (path + 1);
     assert(len >= 1 && len <= MAX_FOLDER_NAME_LENGTH);
     strncpy(component, path + 1, len);
     component[len] = '\0';
@@ -47,9 +47,7 @@ char* make_path_to_parent(const char* path, char* component) {
     p--;
 
   size_t subpath_len = p - path + 1; // Include '/' at p.
-  char* result = malloc(subpath_len + 1); // Include terminating null character.
-  if (result == NULL)
-    exit(1);
+  char* result = safe_malloc(subpath_len + 1); // Include terminating null character.
   strncpy(result, path, subpath_len);
   result[subpath_len] = '\0';
 
@@ -67,6 +65,7 @@ char* make_path_to_lca(const char* path1, const char* path2) {
   size_t max_len = strlen(path1) > strlen(path2) ? strlen(path2) : strlen(path1);
   size_t index = 1;
   size_t end = 0;
+
   while (index <= max_len) {
     if (path1[index] != path2[index]) {
       break;
@@ -77,9 +76,7 @@ char* make_path_to_lca(const char* path1, const char* path2) {
     index++;
   }
 
-  char* result = malloc(end + 2);
-  if (result == NULL)
-    exit(1);
+  char* result = safe_malloc(end + 2);
   strncpy(result, path1, end + 1);
   result[end + 1] = '\0';
   return result;
@@ -93,9 +90,7 @@ static int compare_string_pointers(const void* p1, const void* p2) {
 
 const char** make_map_contents_array(HashMap* map) {
   size_t n_keys = hmap_size(map);
-  const char** result = calloc(n_keys + 1, sizeof(char*));
-  if (result == NULL)
-    exit(1);
+  const char** result = safe_calloc(n_keys + 1, sizeof(char*));
   HashMapIterator it = hmap_iterator(map);
   const char** key = result;
   void* value = NULL;
@@ -117,17 +112,13 @@ char* make_map_contents_string(HashMap* map) {
   // Return empty string if map is empty.
   if (!result_size) {
     // Note we can't just return "", as it can't be free'd.
-    char* result = malloc(1);
-    if (result == NULL)
-      exit(1);
+    char* result = safe_malloc(1);
     *result = '\0';
     free(keys);
     return result;
   }
 
-  char* result = malloc(result_size);
-  if (result == NULL)
-    exit(1);
+  char* result = safe_malloc(result_size);
   *result = '\0';
   char* position = result;
   for (const char** key = keys; *key; ++key) {
