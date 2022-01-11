@@ -2,7 +2,6 @@
 #include <pthread.h>
 
 #include "Node.h"
-#include "path_utils.h"
 #include "err.h"
 #include "safe_alloc.h"
 
@@ -40,13 +39,13 @@ Node* node_new() {
   if ((node->children = hmap_new()) == NULL) exit(1);
 
   if (pthread_mutex_init(&node->lock, 0) != 0)
-    syserr("mutex init failed");
+    fatal("mutex init failed");
   if (pthread_cond_init(&node->readers, 0) != 0)
-    syserr("cond init failed");
+    fatal("cond init failed");
   if (pthread_cond_init(&node->writers, 0) != 0)
-    syserr("cond init failed");
+    fatal("cond init failed");
   if (pthread_cond_init(&node->cleaner, 0) != 0)
-    syserr("cond init failed");
+    fatal("cond init failed");
 
   node->rcount = 0;
   node->wcount = 0;
@@ -64,13 +63,13 @@ void node_free(Node* node) {
   hmap_free(node->children);
 
   if (pthread_cond_destroy (&node->readers) != 0)
-    syserr("cond destroy failed");
+    fatal("cond destroy failed");
   if (pthread_cond_destroy (&node->writers) != 0)
-    syserr("cond destroy failed");
+    fatal("cond destroy failed");
   if (pthread_cond_destroy (&node->cleaner) != 0)
-    syserr("cond destroy failed");
+    fatal("cond destroy failed");
   if (pthread_mutex_destroy (&node->lock) != 0)
-    syserr("mutex destroy failed");
+    fatal("mutex destroy failed");
 
   free(node);
 }
@@ -98,15 +97,33 @@ int node_get_waiting_writers(Node* node) {
   return node->wwait;
 }
 
+static void let_readers_in(Node* node) {
+  node->change = 1;
+  if (pthread_cond_signal(&node->readers) != 0)
+    fatal("cond signal failed");
+}
+
+static void let_writer_in(Node* node) {
+  node->change = 0;
+  if (pthread_cond_signal(&node->writers) != 0)
+    fatal("cond signal failed");
+}
+
+static void let_cleaner_in(Node* node) {
+  node->change = 2;
+  if (pthread_cond_signal(&node->cleaner) != 0)
+    fatal("cond signal failed");
+}
+
 void start_reading(Node* node) {
   if (pthread_mutex_lock(&node->lock) != 0)
-    syserr("lock failed");
+    fatal("lock failed");
 
   // Reader is waiting.
   while (node->wcount + node->wwait > 0 && node->change != 1) {
     node->rwait++;
     if (pthread_cond_wait(&node->readers, &node->lock) != 0)
-      syserr("cond wait failed");
+      fatal("cond wait failed");
     node->rwait--;
   }
 
@@ -120,69 +137,65 @@ void start_reading(Node* node) {
     node->r_to_let_in--;
     node->change = 1;
     if (pthread_cond_signal(&node->readers) != 0)
-      syserr("cond signal failed");
+      fatal("cond signal failed");
   }
   else {
     node->change = -1;
   }
 
   if (pthread_mutex_unlock(&node->lock) != 0)
-    syserr("unlock failed");
+    fatal("unlock failed");
 }
 
 void finish_reading(Node* node) {
   if (pthread_mutex_lock(&node->lock) != 0)
-    syserr("lock failed");
+    fatal("lock failed");
 
   node->rcount--;
 
   // Last finishing reader decides what to do next.
   if (node->rcount == 0) {
+    node->r_to_let_in = -1;
+
     // Last reader frees node if it should be freed.
     if (node->to_delete) {
-      pthread_mutex_unlock(&node->lock);
-      node_free(node);
+      if (node->rwait > 0) {
+        let_readers_in(node);
+        if (pthread_mutex_unlock(&node->lock) != 0)
+          fatal("unlock failed");
+      }
+      else {
+        if (pthread_mutex_unlock(&node->lock) != 0)
+          fatal("unlock failed");
+        node_free(node);
+      }
       return;
     }
 
-    node->r_to_let_in = -1;
-
     // Last reader lets a writer in if at least one writer is waiting.
-    if (node->wwait > 0) {
-      node->change = 0;
-      if (pthread_cond_signal(&node->writers) != 0) {
-        syserr("cond signal failed");
-      }
-    }
+    if (node->wwait > 0)
+      let_writer_in(node);
     // Otherwise, last reader lets reader in if at least one reader is waiting.
-    else if (node->rwait > 0) {
-      node->change = 1;
-      if (pthread_cond_signal(&node->readers) != 0) {
-        syserr("cond signal failed");
-      }
-    }
+    else if (node->rwait > 0)
+      let_readers_in(node);
     // If no one is waiting and cleaner is waiting, last reader lets cleaner in.
-    else if (node->cwait > 0) {
-      node->change = 2;
-      if (pthread_cond_signal(&node->cleaner) != 0) {
-        syserr("cond signal failed");
-      }
-    }
+    else if (node->cwait > 0)
+      let_cleaner_in(node);
   }
 
   if (pthread_mutex_unlock(&node->lock) != 0)
-    syserr("unlock failed");
+    fatal("unlock failed");
 }
 
 void start_writing(Node* node) {
   if (pthread_mutex_lock(&node->lock) != 0)
-    syserr("lock failed");
+    fatal("lock failed");
 
   // Writer is waiting.
   while (node->wcount + node->rcount + node->rwait > 0 && node->change != 0) {
     node->wwait++;
     if (pthread_cond_wait(&node->writers, &node->lock) != 0)
-      syserr("cond wait failed");
+      fatal("cond wait failed");
     node->wwait--;
   }
 
@@ -190,55 +203,43 @@ void start_writing(Node* node) {
   node->wcount++;
 
   if (pthread_mutex_unlock(&node->lock) != 0)
-    syserr("unlock failed");
+    fatal("unlock failed");
 }
 
 void finish_writing(Node* node) {
   if (pthread_mutex_lock(&node->lock) != 0)
-    syserr("lock failed");
+    fatal("lock failed");
 
   node->wcount--;
 
   // Writer lets reader in if at least one is waiting.
-  if (node->rwait > 0) {
-    node->change = 1;
-    if (pthread_cond_signal(&node->readers) != 0) {
-      syserr("cond signal failed");
-    }
-  }
+  if (node->rwait > 0)
+    let_readers_in(node);
   // Otherwise, writer lets writer in if at least one is waiting.
-  else if (node->wwait > 0) {
-    node->change = 0;
-    if (pthread_cond_signal(&node->writers) != 0) {
-      syserr("cond signal failed");
-    }
-  }
+  else if (node->wwait > 0)
+    let_writer_in(node);
   // If no one is waiting and cleaner is waiting, writer lets cleaner in.
-  else if (node->cwait > 0) {
-    node->change = 2;
-    if (pthread_cond_signal(&node->cleaner) != 0) {
-      syserr("cond signal failed");
-    }
-  }
+  else if (node->cwait > 0)
+    let_cleaner_in(node);
 
   if (pthread_mutex_unlock(&node->lock) != 0)
-    syserr("unlock failed");
+    fatal("unlock failed");
 }
 
 void start_cleaning(Node* node) {
   if (pthread_mutex_lock(&node->lock) != 0)
-    syserr("lock failed");
+    fatal("lock failed");
 
   // Cleaner is waiting.
   while (node->wcount + node->wwait + node->rcount + node->rwait > 0 && node->change != 2) {
     node->cwait++;
     if (pthread_cond_wait(&node->cleaner, &node->lock) != 0)
-      syserr("cond wait failed");
+      fatal("cond wait failed");
     node->cwait--;
   }
 
   node->change = -1;
 
   if (pthread_mutex_unlock(&node->lock) != 0)
-    syserr("unlock failed");
+    fatal("unlock failed");
 }
