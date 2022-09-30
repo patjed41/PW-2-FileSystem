@@ -6,6 +6,22 @@ My solution for the second project of the [Concurrent programming (pol. Programo
 
 Implement concurrent data structure representing folder tree.
 
+## Usage
+
+To build run
+```
+mkdir build && cd build && cmake ../src && make
+```
+in the repository's main directory.
+
+### Example
+
+After building you can run
+```
+./main
+```
+in the `build` directory. File [main.c](https://github.com/patjed41/PW-2-FileSystem/blob/master/src/main.c) contains simple sequential test demonstrating usage of the folder tree.
+
 # Full description in polish
 
 Zadanie polega na zaimplementowaniu części systemu plików, a konkretnie współbieżnej struktury danych reprezentującej drzewo folderów.
