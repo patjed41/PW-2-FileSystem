@@ -2,6 +2,10 @@
 
 My solution for the second project of the [Concurrent programming (pol. Programowanie współbieżne)](https://usosweb.mimuw.edu.pl/kontroler.php?_action=katalog2/przedmioty/pokazPrzedmiot&prz_kod=1000-213bPW) course taken in the 2021/2022 winter semester.
 
+## Task
+
+Implement concurrent data structure representing folder tree.
+
 # Full description in polish
 
 Zadanie polega na zaimplementowaniu części systemu plików, a konkretnie współbieżnej struktury danych reprezentującej drzewo folderów.
@@ -42,7 +46,7 @@ Należy zdefiniować strukturę `Tree` oraz następujące operacje (które będ�
 - Jeśli dwie operacje zostały wywołane równolegle (tj. nie jedna rozpoczęta po zakończeniu drugiej), to ich zwracane wartości mogą być takie jak gdyby wykonały się w dowolnej kolejności: jest OK jeśli wybrana kolejność prowadzi do zwrócenia kodu błędu.
 - Można zakładać, że operacja `tree_free` zostanie wykonana na danym drzewie dokładnie raz, po zakończeniu wszystkich innych operacji.
 
-## HashMap
+### HashMap
 
 - Zawartość każdego folderu powinna być utrzymywana za pomocą struktury `HashMap`, opisanej w [HashMap.h](https://github.com/patjed41/PW-2-FileSystem/blob/master/src/HashMap.h). Na przykład `hmap_new()` (tworzenie nowej mapy) powinno być wołane dokładnie raz w `tree_new()` i w `tree_create()` (o ile jest to możliwe, patrz kody błędów niżej) i w żadnej innej operacji.
 - Struktura ta jest zaimplementowana naiwnie, należy samemu zadbać o synchronizację. Implementacja [HashMap.c](https://github.com/patjed41/PW-2-FileSystem/blob/master/src/HashMap.c) może zostać podmieniona. Jedyne co można o niej zakładać, to że wykonuje się poprawnie (każda operacja w skończonym czasie zakończy się oczekiwanym skutkiem), o ile żadna operacja modyfikująca (`hmap_insert/hmap_remove/hmap_free`) nie wykonuje się współbieżnie z jakąkolwiek inną operacją na tej samej mapie. Współbieżne użycie `hmap_get`, `hmap_size` i iteracji (na różnych iteratorach) jest dozwolone.
